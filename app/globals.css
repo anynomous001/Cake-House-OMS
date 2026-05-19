@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #160E0A;
+  --primary-light: #FAF2E6;
+  --primary-mid: #D8A65C;
+  --accent: #E78C85;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: #FAF8F5;
+  color: #2C1B12;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Remove default number input arrows */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D8A65C;
+  border-radius: 4px;
+}
+
+/* Hide scrollbar for filter chips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area padding for bottom nav on iPhones */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+}
+
+/* Animate in for toasts */
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-in {
+  animation: slideInDown 0.2s ease-out forwards;
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
