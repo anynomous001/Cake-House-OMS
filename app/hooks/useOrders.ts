@@ -12,12 +12,18 @@ export function useOrders() {
   const fetchOrders = useCallback(async () => {
     setRefreshing(true);
     const data = await getOrders();
-    setOrders(data.reverse()); // newest first from sheet
+    const seen = new Set<string>();
+    const unique = data.filter(o => {
+      if (seen.has(o.orderId)) return false;
+      seen.add(o.orderId);
+      return true;
+    });
+    setOrders(unique.reverse());
     setRefreshing(false);
   }, [getOrders]);
 
   const addOrderToState = useCallback((order: Order) => {
-    setOrders(prev => [order, ...prev]);
+    setOrders(prev => prev.some(o => o.orderId === order.orderId) ? prev : [order, ...prev]);
   }, []);
 
   const updateOrderStatusInState = useCallback((orderId: string, status: OrderStatus) => {

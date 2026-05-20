@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useGoogleSheet, DiagnosticResult } from '../hooks/useGoogleSheet';
+import { useGoogleSheet, DiagnosticResult, GOOGLE_SHEET_LINK } from '../hooks/useGoogleSheet';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -103,6 +103,21 @@ export default function SettingsModal({ onClose, showToast }: SettingsModalProps
             Save
           </button>
         </div>
+
+        {/* Open sheet link */}
+        <a
+          href={GOOGLE_SHEET_LINK}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full h-10 mb-4 rounded-xl border border-[#EFEAE2] bg-[#FCFAF7] text-xs font-semibold text-[#8C6239] hover:bg-[#FAF2E6] active:scale-95 transition-all duration-200"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
+          Open Google Sheet
+        </a>
 
         {/* Diagnostic result panel */}
         {diagnostic && (

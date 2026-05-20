@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 import { Order, OrderStatus } from '../types/order';
 
 const SHEET_URL_KEY = 'tch_sheet_url';
+const HARDCODED_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwct5Tm_FTdh5Epcl47RbACRTGWNSqFJYsX-QpgKGJhKXyZHb7Bubw9w44jX3w6awOu/exec';
+export const GOOGLE_SHEET_LINK = 'https://docs.google.com/spreadsheets/d/1KLU9ekrlTGxMsrH-TflvSVrLcK00rynPmMb8wPI87qw/edit?gid=0#gid=0';
 
 export interface DiagnosticResult {
   connected: boolean;
@@ -123,8 +125,8 @@ export function useGoogleSheet() {
   const [error, setError] = useState<string | null>(null);
 
   const getSheetUrl = useCallback((): string => {
-    if (typeof window === 'undefined') return '';
-    return localStorage.getItem(SHEET_URL_KEY) || '';
+    if (typeof window === 'undefined') return HARDCODED_SHEET_URL;
+    return localStorage.getItem(SHEET_URL_KEY) || HARDCODED_SHEET_URL;
   }, []);
 
   const saveSheetUrl = useCallback((url: string) => {

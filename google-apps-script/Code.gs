@@ -235,8 +235,9 @@ function updateStatus(orderId, status) {
   var statusCol = -1;
 
   for (var j = 0; j < data[0].length; j++) {
-    if (data[0][j] === 'Order ID') orderIdCol = j;
-    if (data[0][j] === 'Status') statusCol = j;
+    var key = resolveKey(data[0][j], j);
+    if (key === 'orderId') orderIdCol = j;
+    if (key === 'status') statusCol = j;
   }
 
   if (orderIdCol === -1 || statusCol === -1) {
@@ -261,7 +262,7 @@ function updateOrder(data) {
 
   var orderIdCol = -1;
   for (var j = 0; j < sheetData[0].length; j++) {
-    if (sheetData[0][j] === 'Order ID') { orderIdCol = j; break; }
+    if (resolveKey(sheetData[0][j], j) === 'orderId') { orderIdCol = j; break; }
   }
 
   if (orderIdCol === -1) {

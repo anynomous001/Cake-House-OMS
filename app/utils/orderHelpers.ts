@@ -13,7 +13,9 @@ export function generateOrderId(existingOrders: Order[] = []): string {
   const dateStr = `${yy}${mm}${dd}`;
   const todayPrefix = `TCH-${dateStr}-`;
   const todayOrders = existingOrders.filter(o => o.orderId?.startsWith(todayPrefix));
-  const seq = String(todayOrders.length + 1).padStart(4, '0');
+  const nums = todayOrders.map(o => parseInt(o.orderId.slice(todayPrefix.length), 10)).filter(n => !isNaN(n));
+  const maxSeq = nums.length > 0 ? Math.max(...nums) : 0;
+  const seq = String(maxSeq + 1).padStart(4, '0');
   return `${todayPrefix}${seq}`;
 }
 
