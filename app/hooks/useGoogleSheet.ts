@@ -36,6 +36,8 @@ const RAW_HEADER_TO_FIELD: Record<string, string> = {
   'Flavor': 'flavour',
   'Size': 'size',
   'Tiers': 'tiers',
+  'Cupcake Qty': 'cupcakeQty',
+  'Cupcake Pieces': 'cupcakeQty',
   'Cake Message': 'cakeMessage',
   'Design Notes': 'designNotes',
   'Delivery Date': 'deliveryDate',
@@ -56,7 +58,7 @@ const RAW_HEADER_TO_FIELD: Record<string, string> = {
   'Saved At': 'savedAt',
 };
 
-const NUM_FIELDS = new Set(['totalPrice', 'advancePaid', 'balanceDue']);
+const NUM_FIELDS = new Set(['totalPrice', 'advancePaid', 'balanceDue', 'cupcakeQty']);
 const DATE_FIELDS = new Set(['orderDate', 'deliveryDate']);
 
 function extractDate(val: unknown): string {
@@ -91,6 +93,7 @@ function normalizeOrder(raw: Record<string, unknown>): Order {
     o.totalPrice = Number(o.totalPrice) || 0;
     o.advancePaid = Number(o.advancePaid) || 0;
     o.balanceDue = Number(o.balanceDue) || 0;
+    o.cupcakeQty = Number(o.cupcakeQty) || 0;
     return o as unknown as Order;
   }
 
@@ -115,6 +118,7 @@ function normalizeOrder(raw: Record<string, unknown>): Order {
   order.totalPrice = order.totalPrice ?? 0;
   order.advancePaid = order.advancePaid ?? 0;
   order.balanceDue = order.balanceDue ?? 0;
+  order.cupcakeQty = order.cupcakeQty ?? 0;
   if (!order.status) order.status = 'Pending';
 
   return order as unknown as Order;

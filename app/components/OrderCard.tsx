@@ -138,8 +138,11 @@ export default function OrderCard({ order, onStatusUpdated, onOrderUpdated, show
         {/* Key Info Row */}
         <div className="px-4 pb-3 flex flex-wrap gap-x-4 gap-y-1">
           {order.cakeCategory && <InfoChip label="Cake" value={order.cakeCategory} />}
+          {order.cakeCategory === 'Cup cake' && order.cupcakeQty > 0 && (
+            <InfoChip label="Pieces" value={String(order.cupcakeQty)} />
+          )}
           {order.flavour && <InfoChip label="Flavour" value={order.flavour} />}
-          {order.size && <InfoChip label="Size" value={order.size} />}
+          {order.cakeCategory !== 'Cup cake' && order.size && <InfoChip label="Size" value={order.size} />}
           {!order.cakeCategory && !order.flavour && !order.size && (
             <span className="text-[11px] text-gray-400 italic">No cake details</span>
           )}
@@ -260,7 +263,11 @@ export default function OrderCard({ order, onStatusUpdated, onOrderUpdated, show
                 <ReceiptRow label="Date" value={formatDate(order.orderDate)} />
                 <ReceiptRow label="Customer" value={order.customerName || '-'} />
                 <div className="border-t border-[#FAF2E6] pt-2 mt-2">
-                  <ReceiptRow label="Cake" value={[order.cakeCategory, order.flavour, order.size].filter(Boolean).join(' · ') || '-'} />
+                  <ReceiptRow label="Cake" value={[
+                    order.cakeCategory,
+                    order.cakeCategory === 'Cup cake' && order.cupcakeQty > 0 ? `${order.cupcakeQty} pcs` : order.size,
+                    order.flavour,
+                  ].filter(Boolean).join(' · ') || '-'} />
                   <ReceiptRow label="Delivery" value={`${order.deliveryType} · ${formatDate(order.deliveryDate)}${order.deliveryTime ? ' · ' + formatTime(order.deliveryTime) : ''}`} />
                 </div>
                 <div className="border-t border-[#FAF2E6] pt-2 mt-2">
@@ -364,7 +371,11 @@ ${row('Order ID', order.orderId, 'font-family:monospace')}
 ${row('Date', fmtDate(order.orderDate))}
 ${row('Customer', order.customerName)}
 <hr>
-${row('Cake', [order.cakeCategory, order.flavour, order.size].filter(Boolean).join(' · ') || '-')}
+${row('Cake', [
+    order.cakeCategory,
+    order.cakeCategory === 'Cup cake' && order.cupcakeQty > 0 ? `${order.cupcakeQty} pcs` : order.size,
+    order.flavour,
+  ].filter(Boolean).join(' · ') || '-')}
 ${row('Delivery', `${order.deliveryType} · ${fmtDate(order.deliveryDate)}${order.deliveryTime ? ' · ' + fmtTime(order.deliveryTime) : ''}`)}
 <hr>
 ${row('Total', fmtCur(order.totalPrice), 'font-weight:700;font-size:15px')}

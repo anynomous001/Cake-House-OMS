@@ -20,6 +20,7 @@ export interface Order {
   flavour: string;
   size: string;
   tiers: string;
+  cupcakeQty: number;
   cakeMessage: string;
   designNotes: string;
   deliveryDate: string;

@@ -21,8 +21,11 @@ export default function Summary({ orders }: SummaryProps) {
     const amountCollected = nonCancelled.reduce((s, o) => s + (Number(o.advancePaid) || 0), 0);
     const amountDue = nonCancelled.reduce((s, o) => s + (Number(o.balanceDue) || 0), 0);
     const avgOrder = nonCancelled.length > 0 ? Math.round(totalRevenue / nonCancelled.length) : 0;
+    const cupcakeOrders = orders.filter(o => o.cakeCategory === 'Cup cake');
+    const cupcakes = cupcakeOrders.length;
+    const cupcakePieces = cupcakeOrders.reduce((s, o) => s + (Number(o.cupcakeQty) || 0), 0);
 
-    return { active, delivered, cancelled, totalRevenue, amountCollected, amountDue, avgOrder };
+    return { active, delivered, cancelled, totalRevenue, amountCollected, amountDue, avgOrder, cupcakes, cupcakePieces };
   }, [orders]);
 
   const categoryData = useMemo(() => {
@@ -83,6 +86,8 @@ export default function Summary({ orders }: SummaryProps) {
         <MetricCard label="Delivered" value={stats.delivered.length} icon="🎉" color="green" />
         <MetricCard label="Cancelled" value={stats.cancelled.length} icon="❌" color={stats.cancelled.length > 0 ? 'red' : undefined} />
         <MetricCard label="Avg Order Value" value={formatCurrency(stats.avgOrder)} icon="📊" color="blue" />
+        <MetricCard label="Cup Cake Orders" value={stats.cupcakes} icon="🧁" color="purple" />
+        <MetricCard label="Cup Cake Pieces" value={stats.cupcakePieces} icon="🧁" color="blue" />
       </div>
 
       {/* Top Cake Categories */}

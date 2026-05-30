@@ -7,7 +7,7 @@ import { useGoogleSheet } from '../hooks/useGoogleSheet';
 import { Spinner } from './SettingsModal';
 
 const CAKE_CATEGORIES = [
-  'Floral cake', 'Bento cake', 'Meme / funny cake', 'Roast cake',
+  'Floral cake', 'Bento cake', 'Cup cake', 'Meme / funny cake', 'Roast cake',
   'Breakup cake', 'Proposal / crush cake', 'Romantic cake', 'K-drama / anime cake',
   'Baby shower cake', 'Birthday cake', 'Anniversary cake', 'Wedding cake',
   'Graduation cake', 'Farewell cake', 'Festival cake', 'Custom / other',
@@ -41,6 +41,7 @@ interface FormState {
   flavour: string;
   size: string;
   tiers: string;
+  cupcakeQty: string;
   cakeMessage: string;
   designNotes: string;
   orderDate: string;
@@ -68,6 +69,7 @@ function defaultForm(): FormState {
     flavour: '',
     size: '',
     tiers: '',
+    cupcakeQty: '',
     cakeMessage: '',
     designNotes: '',
     orderDate: getTodayString(),
@@ -135,8 +137,9 @@ export default function NewOrderForm({ existingOrders, onOrderSaved, showToast }
       cakeCategory: form.cakeCategory,
       occasion: form.occasion,
       flavour: form.flavour,
-      size: form.size,
-      tiers: form.tiers,
+      size: form.cakeCategory === 'Cup cake' ? '' : form.size,
+      tiers: form.cakeCategory === 'Cup cake' ? '' : form.tiers,
+      cupcakeQty: form.cakeCategory === 'Cup cake' ? (Number(form.cupcakeQty) || 0) : 0,
       cakeMessage: form.cakeMessage.trim(),
       designNotes: form.designNotes.trim(),
       deliveryDate: form.deliveryDate,
@@ -225,26 +228,50 @@ export default function NewOrderForm({ existingOrders, onOrderSaved, showToast }
             {OCCASIONS.map(o => <option key={o}>{o}</option>)}
           </select>
         </Field>
-        <div className="grid grid-cols-2 gap-3">
+        {form.cakeCategory === 'Cup cake' ? (
+          <Field label="Number of Pieces" error={errors.cupcakeQty}>
+            <input
+              type="number"
+              value={form.cupcakeQty}
+              onChange={e => set('cupcakeQty', e.target.value)}
+              placeholder="e.g. 6, 12, 24, 40..."
+              min="1"
+              inputMode="numeric"
+              className={inputCls(false)}
+            />
+          </Field>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Flavour" error={errors.flavour}>
+                <select value={form.flavour} onChange={e => set('flavour', e.target.value)} className={selectCls(false)}>
+                  <option value="">Select...</option>
+                  {FLAVOURS.map(f => <option key={f}>{f}</option>)}
+                </select>
+              </Field>
+              <Field label="Size" error={errors.size}>
+                <select value={form.size} onChange={e => set('size', e.target.value)} className={selectCls(false)}>
+                  <option value="">Select...</option>
+                  {SIZES.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </Field>
+            </div>
+            <Field label="Number of Tiers" error={errors.tiers}>
+              <select value={form.tiers} onChange={e => set('tiers', e.target.value)} className={selectCls(false)}>
+                <option value="">Select tiers...</option>
+                {TIERS.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </Field>
+          </>
+        )}
+        {form.cakeCategory === 'Cup cake' && (
           <Field label="Flavour" error={errors.flavour}>
             <select value={form.flavour} onChange={e => set('flavour', e.target.value)} className={selectCls(false)}>
               <option value="">Select...</option>
               {FLAVOURS.map(f => <option key={f}>{f}</option>)}
             </select>
           </Field>
-          <Field label="Size" error={errors.size}>
-            <select value={form.size} onChange={e => set('size', e.target.value)} className={selectCls(false)}>
-              <option value="">Select...</option>
-              {SIZES.map(s => <option key={s}>{s}</option>)}
-            </select>
-          </Field>
-        </div>
-        <Field label="Number of Tiers" error={errors.tiers}>
-          <select value={form.tiers} onChange={e => set('tiers', e.target.value)} className={selectCls(false)}>
-            <option value="">Select tiers...</option>
-            {TIERS.map(t => <option key={t}>{t}</option>)}
-          </select>
-        </Field>
+        )}
         <Field label="Custom message on cake" error={errors.cakeMessage}>
           <input
             type="text"
