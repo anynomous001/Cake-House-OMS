@@ -27,6 +27,7 @@ export default function OrderCard({ order, onStatusUpdated, onOrderUpdated, show
   const [showEditModal, setShowEditModal] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
+  const [showSensitive, setShowSensitive] = useState(false);
   const { updateStatus, updateOrder } = useGoogleSheet();
 
   async function handleStatusSelect(status: OrderStatus) {
@@ -126,13 +127,23 @@ export default function OrderCard({ order, onStatusUpdated, onOrderUpdated, show
             </div>
           </div>
 
-          {/* Phone */}
-          <a
-            href={`tel:${order.phone}`}
-            className="text-sm text-[#8C6239] hover:text-[#E78C85] font-semibold mt-0.5 block transition-colors duration-200"
-          >
-            {order.phone}
-          </a>
+          {/* Phone + eye toggle */}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <a
+              href={showSensitive ? `tel:${order.phone}` : undefined}
+              onClick={!showSensitive ? (e) => e.preventDefault() : undefined}
+              className="text-sm text-[#8C6239] hover:text-[#E78C85] font-semibold transition-colors duration-200 tracking-wide"
+            >
+              {showSensitive ? order.phone : maskPhone(order.phone)}
+            </a>
+            <button
+              onClick={() => setShowSensitive(v => !v)}
+              className="text-gray-300 hover:text-[#8C6239] transition-colors duration-200 flex items-center"
+              title={showSensitive ? 'Hide details' : 'Show phone & address'}
+            >
+              {showSensitive ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+          </div>
         </div>
 
         {/* Key Info Row */}
@@ -154,7 +165,7 @@ export default function OrderCard({ order, onStatusUpdated, onOrderUpdated, show
             label={order.deliveryType === 'Home Delivery' ? '🚚 Delivery' : '🏪 Pickup'}
             value={formatDate(order.deliveryDate) + (order.deliveryTime ? ' · ' + formatTime(order.deliveryTime) : '')}
           />
-          {order.area && <InfoChip label="Area" value={order.area} />}
+          {order.area && <InfoChip label="Area" value={showSensitive ? order.area : '••••••'} />}
         </div>
 
         {/* Payment Row */}
@@ -190,7 +201,7 @@ export default function OrderCard({ order, onStatusUpdated, onOrderUpdated, show
             {order.cakeMessage && <DetailRow label="Cake message" value={order.cakeMessage} />}
             {order.designNotes && <DetailRow label="Design notes" value={order.designNotes} />}
             {order.deliveryType === 'Home Delivery' && order.deliveryAddress && (
-              <DetailRow label="Delivery address" value={order.deliveryAddress} />
+              <DetailRow label="Delivery address" value={showSensitive ? order.deliveryAddress : '••••••••••••••••'} />
             )}
             {order.paymentMode && <DetailRow label="Payment mode" value={order.paymentMode} />}
             {order.referralSource && <DetailRow label="Found us via" value={order.referralSource} />}
@@ -386,6 +397,32 @@ ${row('Status', order.status)}
 <script>window.onload=function(){window.print();}</script>
 </body>
 </html>`;
+}
+
+function maskPhone(phone: string) {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length <= 4) return '••••';
+  return digits.slice(0, 2) + '••••••' + digits.slice(-2);
+}
+
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
 }
 
 function InfoChip({ label, value }: { label: string; value: string }) {
