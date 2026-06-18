@@ -20,10 +20,13 @@ interface OrderHistoryProps {
   onStatusUpdated: (orderId: string, status: OrderStatus) => void;
   onOrderUpdated: (order: Order) => void;
   showToast: (type: 'success' | 'error' | 'warning' | 'info', message: string) => void;
+  filterDate?: string | null;
+  onClearFilterDate?: () => void;
 }
 
 export default function OrderHistory({
   orders, refreshing, onRefresh, onStatusUpdated, onOrderUpdated, showToast,
+  filterDate, onClearFilterDate,
 }: OrderHistoryProps) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterOption>('All');
@@ -39,6 +42,13 @@ export default function OrderHistory({
 
   const filtered = useMemo(() => {
     let list = [...orders];
+
+    // Calendar date filter takes priority — only show orders for that delivery date
+    if (filterDate) {
+      list = list.filter(o => o.deliveryDate?.split('T')[0] === filterDate);
+      list.sort((a, b) => (a.deliveryDate || '').localeCompare(b.deliveryDate || ''));
+      return list;
+    }
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -62,12 +72,32 @@ export default function OrderHistory({
     });
 
     return list;
-  }, [orders, search, filter, sort]);
+  }, [orders, search, filter, sort, filterDate]);
+
+  const filterDateLabel = filterDate
+    ? new Date(filterDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+    : null;
 
   return (
     <div className="bg-[#FAF8F5] pb-24">
+      {/* Calendar filter banner */}
+      {filterDate && (
+        <div className="sticky top-0 z-20 bg-[#2C1B12] px-4 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-base">📅</span>
+            <p className="text-xs font-bold text-white">Deliveries on {filterDateLabel}</p>
+          </div>
+          <button
+            onClick={onClearFilterDate}
+            className="text-xs font-bold text-[#D8A65C] hover:text-[#E78C85] transition-colors px-2 py-1 rounded-lg hover:bg-white/10"
+          >
+            Clear ✕
+          </button>
+        </div>
+      )}
+
       {/* Search + Refresh */}
-      <div className="sticky top-[64px] z-10 bg-[#FAF8F5] px-4 pt-3 pb-3 border-b border-[#EFEAE2]/60 shadow-sm">
+      <div className={`sticky z-10 bg-[#FAF8F5] px-4 pt-3 pb-3 border-b border-[#EFEAE2]/60 shadow-sm ${filterDate ? 'top-[44px]' : 'top-0'}`}>
         <div className="flex gap-2 mb-2">
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">

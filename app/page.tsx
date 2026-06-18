@@ -7,6 +7,8 @@ import { useGoogleSheet } from './hooks/useGoogleSheet';
 import NewOrderForm from './components/NewOrderForm';
 import OrderHistory from './components/OrderHistory';
 import Summary from './components/Summary';
+import Investment from './components/Investment';
+import CakeCalendar from './components/CakeCalendar';
 import SettingsModal from './components/SettingsModal';
 import Toast from './components/Toast';
 let toastIdCounter = 0;
@@ -15,6 +17,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('new-order');
   const [showSettings, setShowSettings] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [calendarFilterDate, setCalendarFilterDate] = useState<string | null>(null);
   const { orders, refreshing, fetchOrders, addOrderToState, updateOrderStatusInState, updateOrderInState } = useOrders();
   const { getSheetUrl } = useGoogleSheet();
 
@@ -37,6 +40,11 @@ export default function Home() {
 
   function handleOrderUpdated(order: Order) {
     updateOrderInState(order);
+  }
+
+  function handleCalendarDateSelect(date: string) {
+    setCalendarFilterDate(date);
+    setActiveTab('history');
   }
 
   const [sheetConfigured, setSheetConfigured] = useState(false);
@@ -100,10 +108,18 @@ export default function Home() {
               onStatusUpdated={handleStatusUpdated}
               onOrderUpdated={handleOrderUpdated}
               showToast={showToast}
+              filterDate={calendarFilterDate}
+              onClearFilterDate={() => setCalendarFilterDate(null)}
             />
           )}
           {activeTab === 'summary' && (
             <Summary orders={orders} />
+          )}
+          {activeTab === 'investment' && (
+            <Investment orders={orders} />
+          )}
+          {activeTab === 'calendar' && (
+            <CakeCalendar orders={orders} onDateSelect={handleCalendarDateSelect} />
           )}
         </div>
       </main>
@@ -127,6 +143,18 @@ export default function Home() {
           label="Summary"
           active={activeTab === 'summary'}
           onClick={() => setActiveTab('summary')}
+        />
+        <TabButton
+          icon={<BagIcon />}
+          label="Investment"
+          active={activeTab === 'investment'}
+          onClick={() => setActiveTab('investment')}
+        />
+        <TabButton
+          icon={<CalendarIcon />}
+          label="Calendar"
+          active={activeTab === 'calendar'}
+          onClick={() => setActiveTab('calendar')}
         />
       </nav>
 
@@ -199,6 +227,27 @@ function ChartIcon() {
       <line x1="18" y1="20" x2="18" y2="10" />
       <line x1="12" y1="20" x2="12" y2="4" />
       <line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  );
+}
+
+function BagIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <path d="M16 10a4 4 0 0 1-8 0" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
     </svg>
   );
 }

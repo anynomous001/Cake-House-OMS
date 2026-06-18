@@ -43,4 +43,4 @@ export interface ToastMessage {
   message: string;
 }
 
-export type Tab = 'new-order' | 'history' | 'summary';
+export type Tab = 'new-order' | 'history' | 'summary' | 'investment' | 'calendar';

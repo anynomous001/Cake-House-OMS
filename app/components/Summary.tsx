@@ -46,7 +46,8 @@ export default function Summary({ orders }: SummaryProps) {
       const key = getMonthKey(d);
       const label = d.toLocaleDateString('en-IN', { month: 'short' });
       const count = orders.filter(o => {
-        const oDate = o.orderDate || o.savedAt?.split('T')[0] || '';
+        // Count by delivery date so orders appear in the month they were fulfilled
+        const oDate = o.deliveryDate || o.orderDate || o.savedAt?.split('T')[0] || '';
         return oDate.startsWith(key);
       }).length;
       months.push({ key, label, count });
