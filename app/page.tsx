@@ -9,6 +9,7 @@ import OrderHistory from './components/OrderHistory';
 import Summary from './components/Summary';
 import Investment from './components/Investment';
 import CakeCalendar from './components/CakeCalendar';
+import ProfitBank from './components/ProfitBank';
 import SettingsModal from './components/SettingsModal';
 import Toast from './components/Toast';
 let toastIdCounter = 0;
@@ -19,7 +20,7 @@ export default function Home() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [calendarFilterDate, setCalendarFilterDate] = useState<string | null>(null);
   const { orders, refreshing, fetchOrders, addOrderToState, updateOrderStatusInState, updateOrderInState } = useOrders();
-  const { getSheetUrl } = useGoogleSheet();
+  const { getSheetUrl, getInvestmentEntries, getProfitBankEntries } = useGoogleSheet();
 
   const showToast = useCallback((type: ToastMessage['type'], message: string) => {
     const id = String(++toastIdCounter);
@@ -52,7 +53,12 @@ export default function Home() {
   useEffect(() => {
     const configured = getSheetUrl().length > 0;
     setSheetConfigured(configured);
-    if (configured) fetchOrders();
+    if (configured) {
+      fetchOrders();
+      // Trigger sheet creation for Investment and ProfitBank on first load
+      getInvestmentEntries();
+      getProfitBankEntries();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -121,6 +127,9 @@ export default function Home() {
           {activeTab === 'calendar' && (
             <CakeCalendar orders={orders} onDateSelect={handleCalendarDateSelect} />
           )}
+          {activeTab === 'profit-bank' && (
+            <ProfitBank />
+          )}
         </div>
       </main>
 
@@ -155,6 +164,12 @@ export default function Home() {
           label="Calendar"
           active={activeTab === 'calendar'}
           onClick={() => setActiveTab('calendar')}
+        />
+        <TabButton
+          icon={<BankIcon />}
+          label="Bank"
+          active={activeTab === 'profit-bank'}
+          onClick={() => setActiveTab('profit-bank')}
         />
       </nav>
 
@@ -248,6 +263,18 @@ function CalendarIcon() {
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
       <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+
+function BankIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+      <rect x="2" y="10" width="20" height="11" rx="1" />
+      <path d="M12 2L2 7h20L12 2z" />
+      <line x1="6" y1="10" x2="6" y2="21" />
+      <line x1="12" y1="10" x2="12" y2="21" />
+      <line x1="18" y1="10" x2="18" y2="21" />
     </svg>
   );
 }

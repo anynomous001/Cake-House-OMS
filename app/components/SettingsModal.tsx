@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useGoogleSheet, DiagnosticResult, GOOGLE_SHEET_LINK } from '../hooks/useGoogleSheet';
+import { useGoogleSheet, DiagnosticResult, GOOGLE_SHEET_LINK, resetToDefaultSheetUrl } from '../hooks/useGoogleSheet';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -103,6 +103,19 @@ export default function SettingsModal({ onClose, showToast }: SettingsModalProps
             Save
           </button>
         </div>
+
+        {/* Reset to default */}
+        <button
+          onClick={() => {
+            resetToDefaultSheetUrl();
+            setUrl(getSheetUrl());
+            setDiagnostic(null);
+            showToast('info', 'Reset to default script URL');
+          }}
+          className="w-full h-10 mb-4 rounded-xl border border-[#EFEAE2] text-xs font-semibold text-gray-400 hover:text-[#8C6239] hover:border-[#D8A65C] hover:bg-[#FDFAF6] active:scale-95 transition-all duration-200"
+        >
+          Reset to Default URL
+        </button>
 
         {/* Open sheet link */}
         <a

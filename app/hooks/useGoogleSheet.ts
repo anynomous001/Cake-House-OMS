@@ -2,9 +2,18 @@
 
 import { useState, useCallback } from 'react';
 import { Order, OrderStatus } from '../types/order';
+import { InvestmentEntry } from '../types/investment';
+import { ProfitBankEntry } from '../types/profitBank';
 
 const SHEET_URL_KEY = 'tch_sheet_url';
-const HARDCODED_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwct5Tm_FTdh5Epcl47RbACRTGWNSqFJYsX-QpgKGJhKXyZHb7Bubw9w44jX3w6awOu/exec';
+const HARDCODED_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxK8PQBG4zwjS45U6wGyw8DVGuBeE60XLUlxTFbyp3Sr_GjrI4gzcYObemX9BQmpgA/exec';
+const OLD_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwct5Tm_FTdh5Epcl47RbACRTGWNSqFJYsX-QpgKGJhKXyZHb7Bubw9w44jX3w6awOu/exec';
+
+export function resetToDefaultSheetUrl() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(SHEET_URL_KEY);
+  }
+}
 export const GOOGLE_SHEET_LINK = 'https://docs.google.com/spreadsheets/d/1KLU9ekrlTGxMsrH-TflvSVrLcK00rynPmMb8wPI87qw/edit?gid=0#gid=0';
 
 export interface DiagnosticResult {
@@ -62,18 +71,43 @@ const NUM_FIELDS = new Set(['totalPrice', 'advancePaid', 'balanceDue', 'cupcakeQ
 const DATE_FIELDS = new Set(['orderDate', 'deliveryDate']);
 
 function extractDate(val: unknown): string {
-  const s = String(val || '');
+  const s = String(val || '').trim();
   if (!s) return '';
-  // Google Sheets returns dates as ISO: "2026-05-19T18:30:00.000Z" → take date part
-  return s.includes('T') ? s.split('T')[0] : s;
+
+  // Case 1: ISO string or YYYY-MM-DD format
+  const isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoMatch) {
+    return isoMatch[1];
+  }
+
+  // Case 2: DD/MM/YYYY format
+  const dmyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dmyMatch) {
+    const d = String(dmyMatch[1]).padStart(2, '0');
+    const m = String(dmyMatch[2]).padStart(2, '0');
+    const y = dmyMatch[3];
+    return `${y}-${m}-${d}`;
+  }
+
+  // Case 3: Other parseable date strings (e.g. GMT strings)
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  return s;
 }
 
 function extractTime(val: unknown): string {
-  const s = String(val || '');
+  const s = String(val || '').trim();
   if (!s) return '';
-  // Google Sheets returns times as "1899-12-30T14:54:50.000Z" → take HH:MM
-  if (s.includes('T')) {
-    return s.split('T')[1]?.substring(0, 5) || '';
+  // Match HH:MM in ISO or full datetime string
+  const timeMatch = s.match(/(?:T|\b)(\d{2}:\d{2})(?::\d{2})?(?:\b|\.|\+|-)/);
+  if (timeMatch) {
+    return timeMatch[1];
   }
   return s;
 }
@@ -85,10 +119,10 @@ function normalizeOrder(raw: Record<string, unknown>): Order {
   // If it already has camelCase fields, it's from our updated Code.gs
   if ('orderId' in raw) {
     const o = { ...raw } as Record<string, unknown>;
-    // Still fix dates in case they're ISO strings
-    if (typeof o.orderDate === 'string' && o.orderDate.includes('T')) o.orderDate = extractDate(o.orderDate);
-    if (typeof o.deliveryDate === 'string' && o.deliveryDate.includes('T')) o.deliveryDate = extractDate(o.deliveryDate);
-    if (typeof o.deliveryTime === 'string' && o.deliveryTime.includes('T')) o.deliveryTime = extractTime(o.deliveryTime);
+    // Normalize date and time fields to standardized formats
+    o.orderDate = extractDate(o.orderDate);
+    o.deliveryDate = extractDate(o.deliveryDate);
+    o.deliveryTime = extractTime(o.deliveryTime);
     o.phone = String(o.phone ?? '');
     o.totalPrice = Number(o.totalPrice) || 0;
     o.advancePaid = Number(o.advancePaid) || 0;
@@ -130,7 +164,13 @@ export function useGoogleSheet() {
 
   const getSheetUrl = useCallback((): string => {
     if (typeof window === 'undefined') return HARDCODED_SHEET_URL;
-    return localStorage.getItem(SHEET_URL_KEY) || HARDCODED_SHEET_URL;
+    const stored = localStorage.getItem(SHEET_URL_KEY);
+    // Clear stale old deployment URL so hardcoded URL takes over
+    if (stored === OLD_SHEET_URL) {
+      localStorage.removeItem(SHEET_URL_KEY);
+      return HARDCODED_SHEET_URL;
+    }
+    return stored || HARDCODED_SHEET_URL;
   }, []);
 
   const saveSheetUrl = useCallback((url: string) => {
@@ -262,5 +302,108 @@ export function useGoogleSheet() {
     }
   }, []);
 
-  return { loading, error, getSheetUrl, saveSheetUrl, addOrder, getOrders, updateStatus, updateOrder, testConnection };
+  // ─── Investment Entries ───────────────────────────────────────────────────
+
+  const getInvestmentEntries = useCallback(async (): Promise<InvestmentEntry[]> => {
+    const url = getSheetUrl();
+    if (!url) return [];
+    try {
+      const res = await fetch(`${url}?action=getInvestmentEntries`);
+      if (!res.ok) return [];
+      const result = await res.json();
+      return result.success ? (result.data as InvestmentEntry[]) : [];
+    } catch {
+      return [];
+    }
+  }, [getSheetUrl]);
+
+  const addInvestmentEntry = useCallback(async (entry: InvestmentEntry): Promise<boolean> => {
+    const url = getSheetUrl();
+    if (!url) return false;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'addInvestmentEntry', data: entry }),
+      });
+      if (!res.ok) return false;
+      const result = await res.json();
+      return result.success === true;
+    } catch {
+      return false;
+    }
+  }, [getSheetUrl]);
+
+  const deleteInvestmentEntry = useCallback(async (id: string): Promise<boolean> => {
+    const url = getSheetUrl();
+    if (!url) return false;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'deleteInvestmentEntry', id }),
+      });
+      if (!res.ok) return false;
+      const result = await res.json();
+      return result.success === true;
+    } catch {
+      return false;
+    }
+  }, [getSheetUrl]);
+
+  // ─── Profit Bank Entries ─────────────────────────────────────────────────
+
+  const getProfitBankEntries = useCallback(async (): Promise<ProfitBankEntry[]> => {
+    const url = getSheetUrl();
+    if (!url) return [];
+    try {
+      const res = await fetch(`${url}?action=getProfitBankEntries`);
+      if (!res.ok) return [];
+      const result = await res.json();
+      return result.success ? (result.data as ProfitBankEntry[]) : [];
+    } catch {
+      return [];
+    }
+  }, [getSheetUrl]);
+
+  const addProfitBankEntry = useCallback(async (entry: ProfitBankEntry): Promise<boolean> => {
+    const url = getSheetUrl();
+    if (!url) return false;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'addProfitBankEntry', data: entry }),
+      });
+      if (!res.ok) return false;
+      const result = await res.json();
+      return result.success === true;
+    } catch {
+      return false;
+    }
+  }, [getSheetUrl]);
+
+  const deleteProfitBankEntry = useCallback(async (id: string): Promise<boolean> => {
+    const url = getSheetUrl();
+    if (!url) return false;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'deleteProfitBankEntry', id }),
+      });
+      if (!res.ok) return false;
+      const result = await res.json();
+      return result.success === true;
+    } catch {
+      return false;
+    }
+  }, [getSheetUrl]);
+
+  return {
+    loading, error, getSheetUrl, saveSheetUrl,
+    addOrder, getOrders, updateStatus, updateOrder, testConnection,
+    getInvestmentEntries, addInvestmentEntry, deleteInvestmentEntry,
+    getProfitBankEntries, addProfitBankEntry, deleteProfitBankEntry,
+  };
 }

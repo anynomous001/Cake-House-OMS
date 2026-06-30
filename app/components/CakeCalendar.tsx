@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order } from '../types/order';
 import { formatDate, formatTime } from '../utils/orderHelpers';
 
@@ -25,18 +25,67 @@ function toYMD(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Handles YYYY-MM-DD, DD/MM/YYYY, ISO strings — always returns local midnight Date or null
+function parseOrderDate(raw: string | null | undefined): Date | null {
+  if (!raw) return null;
+  let s = raw.trim();
+  // Split on 'T' only if it starts with an ISO date format (YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}T/i.test(s)) {
+    s = s.split(/T/i)[0];
+  }
+  s = s.trim();
+  if (!s) return null;
+
+  // YYYY-MM-DD
+  const ymd = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (ymd) {
+    const d = new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // DD/MM/YYYY (Indian format)
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmy) {
+    const d = new Date(+dmy[3], +dmy[2] - 1, +dmy[1]);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Fallback: let JS try
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export default function CakeCalendar({ orders, onDateSelect }: CakeCalendarProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const hasAutoNavigated = useRef(false);
 
-  // Map deliveryDate → orders for quick lookup
+  // Auto-navigate to the most recent month with orders on first load
+  useEffect(() => {
+    if (hasAutoNavigated.current || orders.length === 0) return;
+    const parsed = orders
+      .map(o => parseOrderDate(o.deliveryDate || o.orderDate))
+      .filter(Boolean) as Date[];
+    if (parsed.length === 0) return;
+    const hasOrdersThisMonth = parsed.some(
+      d => d.getFullYear() === viewYear && d.getMonth() === viewMonth
+    );
+    if (!hasOrdersThisMonth) {
+      // Navigate to the most recent month with orders
+      const latest = parsed.reduce((a, b) => (b > a ? b : a));
+      setViewYear(latest.getFullYear());
+      setViewMonth(latest.getMonth());
+    }
+    hasAutoNavigated.current = true;
+  }, [orders]);
+
+  // Map deliveryDate (fallback orderDate) → orders for quick lookup
   const byDate = useMemo(() => {
     const map: Record<string, Order[]> = {};
     orders.forEach(o => {
-      if (!o.deliveryDate) return;
-      const key = o.deliveryDate.split('T')[0];
+      const parsed = parseOrderDate(o.deliveryDate || o.orderDate);
+      if (!parsed) return;
+      const key = toYMD(parsed);
       if (!map[key]) map[key] = [];
       map[key].push(o);
     });
@@ -81,6 +130,17 @@ export default function CakeCalendar({ orders, onDateSelect }: CakeCalendarProps
     }
   }
 
+  // All months that have orders (for quick-jump strip)
+  const monthsWithOrders = useMemo(() => {
+    const seen = new Set<string>();
+    orders.forEach(o => {
+      const parsed = parseOrderDate(o.deliveryDate || o.orderDate);
+      if (!parsed) return;
+      seen.add(`${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`);
+    });
+    return Array.from(seen).sort().reverse(); // most recent first
+  }, [orders]);
+
   // Days with any orders this month (for dot indicator)
   const daysWithOrders = useMemo(() => {
     const prefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-`;
@@ -114,6 +174,32 @@ export default function CakeCalendar({ orders, onDateSelect }: CakeCalendarProps
           <ChevronRight />
         </button>
       </div>
+
+      {/* Months with orders — quick jump strip */}
+      {monthsWithOrders.length > 0 && (
+        <div className="flex gap-2 px-3 pt-3 pb-1 overflow-x-auto scrollbar-none">
+          {monthsWithOrders.map(ym => {
+            const [y, m] = ym.split('-').map(Number);
+            const isActive = y === viewYear && m - 1 === viewMonth;
+            const label = new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+            const count = orders.filter(o => {
+              const d = parseOrderDate(o.deliveryDate || o.orderDate);
+              return d && d.getFullYear() === y && d.getMonth() === m - 1;
+            }).length;
+            return (
+              <button
+                key={ym}
+                onClick={() => { setViewYear(y); setViewMonth(m - 1); }}
+                className={`shrink-0 flex flex-col items-center px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95
+                  ${isActive ? 'bg-[#2C1B12] text-white' : 'bg-white border border-[#EFEAE2] text-[#8C6239]'}`}
+              >
+                <span>{label}</span>
+                <span className={`text-[9px] font-semibold ${isActive ? 'text-[#D8A65C]' : 'text-gray-400'}`}>{count} order{count !== 1 ? 's' : ''}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="px-3 pt-3">
         {/* Day headers */}
@@ -216,15 +302,18 @@ function MonthSummary({ orders, viewYear, viewMonth, onDateSelect }: {
   viewMonth: number;
   onDateSelect: (date: string) => void;
 }) {
-  const prefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-`;
-  const monthOrders = orders.filter(o => o.deliveryDate?.startsWith(prefix));
+  const monthOrders = orders.filter(o => {
+    const d = parseOrderDate(o.deliveryDate || o.orderDate);
+    return d && d.getFullYear() === viewYear && d.getMonth() === viewMonth;
+  });
 
   if (monthOrders.length === 0) return null;
 
-  // Group by date, sort ascending
+  // Group by YYYY-MM-DD, sort ascending
   const grouped: Record<string, Order[]> = {};
   monthOrders.forEach(o => {
-    const key = o.deliveryDate!.split('T')[0];
+    const d = parseOrderDate(o.deliveryDate || o.orderDate)!;
+    const key = toYMD(d);
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(o);
   });
@@ -271,10 +360,10 @@ function MonthSummary({ orders, viewYear, viewMonth, onDateSelect }: {
 }
 
 function DateBadge({ date }: { date: string }) {
-  const d = new Date(date + 'T00:00:00');
-  const day = d.getDate();
-  const mon = d.toLocaleDateString('en-IN', { month: 'short' });
-  const dow = d.toLocaleDateString('en-IN', { weekday: 'short' });
+  const d = parseOrderDate(date);
+  const day = d ? d.getDate() : '--';
+  const mon = d ? d.toLocaleDateString('en-IN', { month: 'short' }) : '???';
+  const dow = d ? d.toLocaleDateString('en-IN', { weekday: 'short' }) : '???';
   return (
     <div className="shrink-0 w-10 flex flex-col items-center bg-[#FAF2E6] rounded-xl py-1.5">
       <span className="text-[9px] font-bold text-[#8C6239] uppercase">{mon}</span>

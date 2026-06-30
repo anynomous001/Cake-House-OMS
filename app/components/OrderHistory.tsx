@@ -74,6 +74,36 @@ export default function OrderHistory({
     return list;
   }, [orders, search, filter, sort, filterDate]);
 
+  // Group orders by month (only when not in delivery-date sort or calendar filter mode)
+  const groupedByMonth = useMemo(() => {
+    if (filterDate || sort === 'delivery') return null;
+
+    const map = new Map<string, Order[]>();
+    filtered.forEach(o => {
+      const d = new Date(o.savedAt || o.orderDate || '');
+      const key = isNaN(d.getTime())
+        ? 'unknown'
+        : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(o);
+    });
+
+    const sortedKeys = Array.from(map.keys()).sort((a, b) =>
+      sort === 'oldest' ? a.localeCompare(b) : b.localeCompare(a)
+    );
+
+    return sortedKeys.map(key => {
+      let label = 'Unknown';
+      if (key !== 'unknown') {
+        const [y, m] = key.split('-');
+        label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-IN', {
+          month: 'long', year: 'numeric',
+        });
+      }
+      return { key, label, orders: map.get(key)! };
+    });
+  }, [filtered, filterDate, sort]);
+
   const filterDateLabel = filterDate
     ? new Date(filterDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
     : null;
@@ -176,6 +206,31 @@ export default function OrderHistory({
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState search={search} filter={filter} />
+      ) : groupedByMonth ? (
+        <div className="pt-2">
+          {groupedByMonth.map(group => (
+            <div key={group.key}>
+              {/* Month header */}
+              <div className="px-4 pt-4 pb-2 flex items-center gap-3">
+                <span className="text-xs font-bold text-[#8C6239] uppercase tracking-wider">{group.label}</span>
+                <span className="text-[10px] font-semibold text-gray-400 bg-[#FAF2E6] px-2 py-0.5 rounded-full">
+                  {group.orders.length} order{group.orders.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="px-4 space-y-3">
+                {group.orders.map(order => (
+                  <OrderCard
+                    key={order.orderId}
+                    order={order}
+                    onStatusUpdated={onStatusUpdated}
+                    onOrderUpdated={onOrderUpdated}
+                    showToast={showToast}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="px-4 space-y-3 pt-4">
           {filtered.map(order => (
