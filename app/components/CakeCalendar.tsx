@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order } from '../types/order';
-import { formatDate, formatTime } from '../utils/orderHelpers';
+import { formatDate, formatTime, formatCurrency } from '../utils/orderHelpers';
 
 interface CakeCalendarProps {
   orders: Order[];
@@ -59,6 +59,24 @@ export default function CakeCalendar({ orders, onDateSelect }: CakeCalendarProps
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const hasAutoNavigated = useRef(false);
+
+  const monthlyDeliveredTotal = useMemo(() => {
+    return orders
+      .filter(o => {
+        const d = parseOrderDate(o.deliveryDate || o.orderDate);
+        return d && d.getFullYear() === viewYear && d.getMonth() === viewMonth && o.status === 'Delivered';
+      })
+      .reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
+  }, [orders, viewYear, viewMonth]);
+
+  const monthlyEstimatedTotal = useMemo(() => {
+    return orders
+      .filter(o => {
+        const d = parseOrderDate(o.deliveryDate || o.orderDate);
+        return d && d.getFullYear() === viewYear && d.getMonth() === viewMonth && o.status !== 'Cancelled';
+      })
+      .reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
+  }, [orders, viewYear, viewMonth]);
 
   // Auto-navigate to the most recent month with orders on first load
   useEffect(() => {
@@ -163,9 +181,16 @@ export default function CakeCalendar({ orders, onDateSelect }: CakeCalendarProps
         </button>
         <div className="text-center">
           <p className="text-sm font-bold text-[#2C1B12]">{monthLabel}</p>
-          {(viewMonth !== today.getMonth() || viewYear !== today.getFullYear()) && (
-            <button onClick={goToday} className="text-[10px] text-[#D8A65C] font-bold">Back to today</button>
-          )}
+          <div className="flex flex-col items-center mt-0.5">
+            <div className="flex gap-1.5 items-center justify-center text-[10px] font-bold text-gray-500">
+              <span>Delivered: <span className="text-green-600">{formatCurrency(monthlyDeliveredTotal)}</span></span>
+              <span className="text-gray-300">•</span>
+              <span>Est. Total: <span className="text-[#8C6239]">{formatCurrency(monthlyEstimatedTotal)}</span></span>
+            </div>
+            {(viewMonth !== today.getMonth() || viewYear !== today.getFullYear()) && (
+              <button onClick={goToday} className="text-[9px] text-[#D8A65C] font-bold mt-0.5">Back to today</button>
+            )}
+          </div>
         </div>
         <button
           onClick={nextMonth}
@@ -309,6 +334,12 @@ function MonthSummary({ orders, viewYear, viewMonth, onDateSelect }: {
 
   if (monthOrders.length === 0) return null;
 
+  const deliveredOrders = monthOrders.filter(o => o.status === 'Delivered');
+  const totalAmountSold = deliveredOrders.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
+
+  const nonCancelledOrders = monthOrders.filter(o => o.status !== 'Cancelled');
+  const totalAmountEstimated = nonCancelledOrders.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
+
   // Group by YYYY-MM-DD, sort ascending
   const grouped: Record<string, Order[]> = {};
   monthOrders.forEach(o => {
@@ -321,10 +352,18 @@ function MonthSummary({ orders, viewYear, viewMonth, onDateSelect }: {
 
   return (
     <div className="mx-3 mt-4 bg-white rounded-2xl border border-[#FAF2E6] shadow-premium overflow-hidden">
-      <div className="px-4 py-3 border-b border-[#FAF2E6]">
+      <div className="px-4 py-3 border-b border-[#FAF2E6] flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
         <h3 className="text-xs font-bold text-[#2C1B12] uppercase tracking-wider">
           Delivery Schedule — {monthOrders.length} order{monthOrders.length !== 1 ? 's' : ''}
         </h3>
+        <div className="flex gap-2 items-center">
+          <span className="text-[10px] sm:text-xs font-bold text-green-700 bg-green-50 border border-green-100 px-2 py-0.5 rounded-lg shrink-0">
+            Delivered: {formatCurrency(totalAmountSold)}
+          </span>
+          <span className="text-[10px] sm:text-xs font-bold text-[#8C6239] bg-[#FAF2E6] border border-[#FAF2E6]/60 px-2 py-0.5 rounded-lg shrink-0">
+            Est. Total: {formatCurrency(totalAmountEstimated)}
+          </span>
+        </div>
       </div>
       <div className="divide-y divide-[#FAF2E6]">
         {sortedDates.map(date => {
