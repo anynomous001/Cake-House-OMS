@@ -67,7 +67,7 @@ export default function Home() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-[#160E0A] border-b border-[#2C1B12]/20 flex items-center justify-between px-4 h-[64px] shadow-md">
         <div className="flex items-center gap-2.5">
-          <img src="/1000059078.png" alt="Tota Cake House" className="w-9 h-9 object-contain rounded-lg" />
+          <img src="/logo.jpg" alt="Tota Cake House" className="w-9 h-9 object-contain rounded-full" />
           <div>
             <h1 className="text-base font-bold text-white tracking-wide font-serif leading-tight">Tota Cake House</h1>
             <p className="text-[9px] text-[#D8A65C] uppercase tracking-widest font-semibold leading-none">Order Management</p>

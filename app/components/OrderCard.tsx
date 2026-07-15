@@ -8,6 +8,60 @@ import { useGoogleSheet } from '../hooks/useGoogleSheet';
 import { Spinner } from './SettingsModal';
 import EditOrderModal from './EditOrderModal';
 
+function compressImage(file: File, maxWidth = 400, maxHeight = 400, quality = 0.6): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedBase64);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
 const ALL_STATUSES: OrderStatus[] = [
   'Pending', 'Confirmed', 'In progress', 'Ready for pickup',
   'Out for delivery', 'Delivered', 'Cancelled',
@@ -28,7 +82,55 @@ export default function OrderCard({ order, onStatusUpdated, onOrderUpdated, show
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [showSensitive, setShowSensitive] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const { updateStatus, updateOrder } = useGoogleSheet();
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    try {
+      const compressedBase64 = await compressImage(file, 400, 400, 0.6);
+      const updated: Order = {
+        ...order,
+        cakePhoto: compressedBase64,
+      };
+      const ok = await updateOrder(updated);
+      if (ok) {
+        onOrderUpdated(updated);
+        showToast('success', 'Cake photo uploaded successfully!');
+      } else {
+        showToast('error', 'Failed to upload photo to sheet.');
+      }
+    } catch (err) {
+      showToast('error', 'Error resizing image.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  async function handleRemovePhoto() {
+    if (!confirm('Are you sure you want to remove the cake photo?')) return;
+    setUploadingPhoto(true);
+    try {
+      const updated: Order = {
+        ...order,
+        cakePhoto: '',
+      };
+      const ok = await updateOrder(updated);
+      if (ok) {
+        onOrderUpdated(updated);
+        showToast('success', 'Cake photo removed.');
+      } else {
+        showToast('error', 'Failed to remove photo from sheet.');
+      }
+    } catch {
+      showToast('error', 'Error removing photo.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
 
   async function handleStatusSelect(status: OrderStatus) {
     setShowStatusSheet(false);
@@ -206,6 +308,47 @@ export default function OrderCard({ order, onStatusUpdated, onOrderUpdated, show
             {order.paymentMode && <DetailRow label="Payment mode" value={order.paymentMode} />}
             {order.referralSource && <DetailRow label="Found us via" value={order.referralSource} />}
             {order.notes && <DetailRow label="Notes" value={order.notes} />}
+
+            {/* Cake Photo Section */}
+            <div className="border-t border-gray-50 pt-3 mt-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Cake Photo</p>
+              {order.cakePhoto ? (
+                <div className="space-y-2">
+                  <div className="relative w-full rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center py-1">
+                    <img src={order.cakePhoto} alt="Cake" className="w-full h-auto max-h-72 object-contain" />
+                    <button
+                      onClick={handleRemovePhoto}
+                      disabled={uploadingPhoto}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors shadow-sm"
+                      title="Remove Photo"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-[#FAF2E6] hover:border-[#D8A65C] rounded-xl py-6 cursor-pointer hover:bg-[#FDFAF6] transition-colors">
+                    <span className="text-2xl mb-1">📷</span>
+                    <span className="text-xs font-bold text-gray-500">Upload Cake Photo</span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">JPEG / PNG</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      disabled={uploadingPhoto}
+                      className="hidden"
+                    />
+                  </label>
+                  {uploadingPhoto && (
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                      <Spinner size={14} color="#D8A65C" />
+                      <span className="text-xs text-gray-400 font-medium">Uploading photo...</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -265,7 +408,7 @@ export default function OrderCard({ order, onStatusUpdated, onOrderUpdated, show
             </div>
             <div className="overflow-y-auto flex-1 px-5 py-4">
               <div className="text-center mb-4">
-                <img src="/1000059078.png" alt="Tota Cake House" className="w-14 h-14 object-contain rounded-xl mx-auto mb-1" />
+                <img src="/logo.jpg" alt="Tota Cake House" className="w-14 h-14 object-contain rounded-full mx-auto mb-1" />
                 <p className="text-base font-bold text-[#160E0A] font-serif">Tota Cake House</p>
                 <p className="text-xs text-[#8C6239] font-medium tracking-wide uppercase font-sans mt-0.5">Maslandapur, West Bengal</p>
               </div>
@@ -286,6 +429,12 @@ export default function OrderCard({ order, onStatusUpdated, onOrderUpdated, show
                   {order.paymentMode && <ReceiptRow label="Payment" value={order.paymentMode} />}
                   <ReceiptRow label="Status" value={order.status} />
                 </div>
+                {order.cakePhoto && (
+                  <div className="border-t border-[#FAF2E6] pt-2 mt-2 flex flex-col items-center">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase self-start mb-1">Cake Photo</p>
+                    <img src={order.cakePhoto} alt="Cake" className="w-full max-h-36 object-contain rounded-lg border border-gray-100" />
+                  </div>
+                )}
               </div>
               <p className="text-center text-[10px] text-gray-400 font-sans mt-4">Thank you for your order!</p>
             </div>
@@ -357,7 +506,7 @@ function buildReceiptHtml(order: Order): string {
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#1a1a1a;padding:28px 24px;max-width:420px;margin:0 auto}
   .header{text-align:center;margin-bottom:20px}
-  .logo{width:60px;height:60px;object-fit:contain;border-radius:10px;margin-bottom:6px}
+  .logo{width:60px;height:60px;object-fit:contain;border-radius:50%;margin-bottom:6px}
   .brand{font-size:20px;font-weight:700;color:#160E0A}
   .subtitle{font-size:11px;color:#8C6239;text-transform:uppercase;letter-spacing:2px;margin-top:3px}
   hr{border:none;border-top:1px dashed #d8c9b5;margin:14px 0}
@@ -373,7 +522,7 @@ function buildReceiptHtml(order: Order): string {
 </head>
 <body>
 <div class="header">
-  <img class="logo" src="${window.location.origin}/1000059078.png" alt="Tota Cake House" />
+  <img class="logo" src="${window.location.origin}/logo.jpg" alt="Tota Cake House" />
   <div class="brand">Tota Cake House</div>
   <div class="subtitle">Maslandapur, West Bengal</div>
 </div>
@@ -392,6 +541,13 @@ ${row('Delivery', `${order.deliveryType} · ${fmtDate(order.deliveryDate)}${orde
 ${row('Total', fmtCur(order.totalPrice), 'font-weight:700;font-size:15px')}
 ${opt(order.paymentMode, row('Payment', order.paymentMode))}
 ${row('Status', order.status)}
+${order.cakePhoto ? `
+<hr>
+<div class="section">Cake Photo</div>
+<div style="text-align: center; margin: 10px 0;">
+  <img src="${order.cakePhoto}" style="max-width: 100%; max-height: 180px; object-fit: contain; border-radius: 8px;" />
+</div>
+` : ''}
 <hr>
 <div class="footer">Thank you for ordering from Tota Cake House!</div>
 <script>window.onload=function(){window.print();}</script>

@@ -6,8 +6,8 @@ import { InvestmentEntry } from '../types/investment';
 import { ProfitBankEntry } from '../types/profitBank';
 
 const SHEET_URL_KEY = 'tch_sheet_url';
-const HARDCODED_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxK8PQBG4zwjS45U6wGyw8DVGuBeE60XLUlxTFbyp3Sr_GjrI4gzcYObemX9BQmpgA/exec';
-const OLD_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwct5Tm_FTdh5Epcl47RbACRTGWNSqFJYsX-QpgKGJhKXyZHb7Bubw9w44jX3w6awOu/exec';
+const HARDCODED_SHEET_URL = 'https://script.google.com/macros/s/AKfycbytMPnmaockIHadTk2tAb-_h77HxFRqWZXHcklQgBPWWGJauzejZeJpIER0fsP1V28G/exec';
+const OLD_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxK8PQBG4zwjS45U6wGyw8DVGuBeE60XLUlxTFbyp3Sr_GjrI4gzcYObemX9BQmpgA/exec';
 
 export function resetToDefaultSheetUrl() {
   if (typeof window !== 'undefined') {
@@ -65,6 +65,10 @@ const RAW_HEADER_TO_FIELD: Record<string, string> = {
   'Referral Source': 'referralSource',
   'Notes': 'notes',
   'Saved At': 'savedAt',
+  'Cake Photo': 'cakePhoto',
+  'Photo': 'cakePhoto',
+  'Cake Photo URL': 'cakePhoto',
+  'Photo URL': 'cakePhoto',
 };
 
 const NUM_FIELDS = new Set(['totalPrice', 'advancePaid', 'balanceDue', 'cupcakeQty']);
@@ -128,6 +132,7 @@ function normalizeOrder(raw: Record<string, unknown>): Order {
     o.advancePaid = Number(o.advancePaid) || 0;
     o.balanceDue = Number(o.balanceDue) || 0;
     o.cupcakeQty = Number(o.cupcakeQty) || 0;
+    o.cakePhoto = String(o.cakePhoto ?? '');
     return o as unknown as Order;
   }
 
@@ -153,6 +158,7 @@ function normalizeOrder(raw: Record<string, unknown>): Order {
   order.advancePaid = order.advancePaid ?? 0;
   order.balanceDue = order.balanceDue ?? 0;
   order.cupcakeQty = order.cupcakeQty ?? 0;
+  order.cakePhoto = order.cakePhoto ?? '';
   if (!order.status) order.status = 'Pending';
 
   return order as unknown as Order;

@@ -35,6 +35,7 @@ export interface Order {
   referralSource: string;
   notes: string;
   savedAt: string;
+  cakePhoto?: string;
 }
 
 export interface ToastMessage {

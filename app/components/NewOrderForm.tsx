@@ -154,6 +154,7 @@ export default function NewOrderForm({ existingOrders, onOrderSaved, showToast }
       referralSource: form.referralSource,
       notes: form.notes.trim(),
       savedAt: new Date().toISOString(),
+      cakePhoto: '',
     };
 
     const ok = await addOrder(order);

@@ -16,7 +16,8 @@ var HEADERS = [
   'Cake Category', 'Occasion', 'Flavour', 'Size', 'Tiers',
   'Cake Message', 'Design Notes', 'Delivery Date', 'Delivery Time',
   'Delivery Type', 'Delivery Address', 'Total Price', 'Advance Paid',
-  'Balance Due', 'Payment Mode', 'Status', 'Referral Source', 'Notes', 'Saved At'
+  'Balance Due', 'Payment Mode', 'Status', 'Referral Source', 'Notes', 'Saved At',
+  'Cake Photo'
 ];
 
 var INVESTMENT_HEADERS = ['ID', 'Date', 'Material Name', 'Unit', 'Price Per Unit', 'Quantity'];
@@ -47,6 +48,7 @@ var FIELD_MAP = {
   'Referral Source': 'referralSource',
   'Notes': 'notes',
   'Saved At': 'savedAt',
+  'Cake Photo': 'cakePhoto',
   'Area / Locality': 'area',
   'Total Price (₹)': 'totalPrice',
   'Advance Paid (₹)': 'advancePaid',
@@ -122,7 +124,8 @@ function addOrder(data) {
     data.status        || 'Pending',
     data.referralSource || '',
     data.notes         || '',
-    data.savedAt       || new Date().toISOString()
+    data.savedAt       || new Date().toISOString(),
+    data.cakePhoto     || ''
   ]);
   return respond({ success: true, orderId: data.orderId });
 }
@@ -232,7 +235,8 @@ function updateOrder(data) {
         data.deliveryAddress || '', Number(data.totalPrice) || 0,
         Number(data.advancePaid) || 0, Number(data.balanceDue) || 0,
         data.paymentMode || '', data.status || 'Pending',
-        data.referralSource || '', data.notes || '', data.savedAt || ''
+        data.referralSource || '', data.notes || '', data.savedAt || '',
+        data.cakePhoto || ''
       ]]);
       return respond({ success: true });
     }
