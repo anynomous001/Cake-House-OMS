@@ -10,7 +10,7 @@ const CAKE_CATEGORIES = [
   'Floral cake', 'Bento cake', 'Cup cake', 'Meme / funny cake', 'Roast cake',
   'Breakup cake', 'Proposal / crush cake', 'Romantic cake', 'K-drama / anime cake',
   'Baby shower cake', 'Birthday cake', 'Anniversary cake', 'Wedding cake',
-  'Graduation cake', 'Farewell cake', 'Festival cake', 'Custom / other',
+  'Graduation cake', 'Farewell cake', 'Festival cake', 'Tub Cake', 'Truffle Cake', 'Custom / other',
 ];
 const OCCASIONS = [
   'Birthday', 'Anniversary', 'Wedding', 'Baby shower', 'Proposal',

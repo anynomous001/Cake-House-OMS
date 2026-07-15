@@ -75,6 +75,34 @@ export default function Summary({ orders }: SummaryProps) {
   const maxCategoryCount = categoryData[0]?.[1] || 1;
   const maxMonthlyCount = Math.max(...monthlyData.map(m => m.count), 1);
 
+  const chartPoints = useMemo(() => {
+    const paddingX = 45;
+    const width = 500;
+    const spacingX = (width - paddingX * 2) / (monthlyData.length - 1 || 1);
+    const minY = 25;
+    const maxY = 100;
+    
+    return monthlyData.map((m, i) => {
+      const x = paddingX + i * spacingX;
+      const y = maxMonthlyCount > 0 
+        ? maxY - (m.count / maxMonthlyCount) * (maxY - minY) 
+        : maxY;
+      return { x, y, count: m.count, label: m.label };
+    });
+  }, [monthlyData, maxMonthlyCount]);
+
+  const linePath = useMemo(() => {
+    if (chartPoints.length === 0) return '';
+    return chartPoints.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ');
+  }, [chartPoints]);
+
+  const areaPath = useMemo(() => {
+    if (chartPoints.length === 0) return '';
+    const first = chartPoints[0];
+    const last = chartPoints[chartPoints.length - 1];
+    return `${linePath} L ${last.x} 115 L ${first.x} 115 Z`;
+  }, [chartPoints, linePath]);
+
   return (
     <div className="pb-24 px-4 pt-4 space-y-5 bg-[#FAF8F5]">
       {/* Metric Cards */}
@@ -114,22 +142,85 @@ export default function Summary({ orders }: SummaryProps) {
         </div>
       )}
 
-      {/* Monthly Order Trend */}
+      {/* Monthly Order Trend (XY Graph) */}
       <div className="bg-white rounded-2xl border border-[#FAF2E6] shadow-premium p-4">
         <h3 className="text-xs font-bold text-[#2C1B12] uppercase tracking-wider mb-4 font-sans">Monthly Order Trend</h3>
-        <div className="flex items-end gap-2 h-28 pt-2">
-          {monthlyData.map(m => (
-            <div key={m.key} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[10px] font-bold text-[#8C6239]">{m.count > 0 ? m.count : ''}</span>
-              <div className="w-full bg-[#FCFAF7] border border-[#EFEAE2]/30 rounded-t-lg overflow-hidden" style={{ height: '80px' }}>
-                <div
-                  className="w-full bg-gradient-to-t from-[#E78C85] to-[#D8A65C] rounded-t-lg transition-all duration-500"
-                  style={{ height: `${(m.count / maxMonthlyCount) * 80}px`, marginTop: `${80 - (m.count / maxMonthlyCount) * 80}px` }}
+        <div className="pt-2">
+          <svg viewBox="0 0 500 150" className="w-full h-auto">
+            <defs>
+              <linearGradient id="area-gradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#E78C85" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#D8A65C" stopOpacity="0.0" />
+              </linearGradient>
+              <linearGradient id="line-gradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#E78C85" />
+                <stop offset="100%" stopColor="#D8A65C" />
+              </linearGradient>
+            </defs>
+
+            {/* Background Grid Lines */}
+            <line x1="35" y1="25" x2="465" y2="25" stroke="#FAF2E6" strokeWidth="1" strokeDasharray="4 4" />
+            <line x1="35" y1="70" x2="465" y2="70" stroke="#FAF2E6" strokeWidth="1" strokeDasharray="4 4" />
+            <line x1="35" y1="115" x2="465" y2="115" stroke="#FAF2E6" strokeWidth="1" />
+
+            {/* Grid Y Axis Labels */}
+            <text x="15" y="28" fontSize="9" fontWeight="bold" fill="#9CA3AF" textAnchor="start">{maxMonthlyCount}</text>
+            <text x="15" y="73" fontSize="9" fontWeight="bold" fill="#9CA3AF" textAnchor="start">{Math.round(maxMonthlyCount / 2)}</text>
+            <text x="15" y="118" fontSize="9" fontWeight="bold" fill="#9CA3AF" textAnchor="start">0</text>
+
+            {/* Area Path */}
+            {areaPath && (
+              <path d={areaPath} fill="url(#area-gradient)" />
+            )}
+
+            {/* Line Path */}
+            {linePath && (
+              <path
+                d={linePath}
+                fill="none"
+                stroke="url(#line-gradient)"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+
+            {/* Nodes and Labels */}
+            {chartPoints.map((p, i) => (
+              <g key={i}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r="5"
+                  fill="#D8A65C"
+                  stroke="#FFFFFF"
+                  strokeWidth="2.5"
+                  className="transition-all hover:scale-125 cursor-pointer"
                 />
-              </div>
-              <span className="text-[10px] text-gray-400 font-bold tracking-wide uppercase mt-0.5">{m.label}</span>
-            </div>
-          ))}
+                <text
+                  x={p.x}
+                  y={p.y - 10}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fontWeight="extrabold"
+                  fill="#8C6239"
+                >
+                  {p.count}
+                </text>
+                <text
+                  x={p.x}
+                  y="135"
+                  textAnchor="middle"
+                  fontSize="10"
+                  fontWeight="bold"
+                  fill="#9CA3AF"
+                  className="font-sans uppercase tracking-wider"
+                >
+                  {p.label}
+                </text>
+              </g>
+            ))}
+          </svg>
         </div>
       </div>
 

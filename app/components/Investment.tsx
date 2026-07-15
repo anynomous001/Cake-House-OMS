@@ -56,7 +56,96 @@ export default function Investment({ orders }: InvestmentProps) {
     unit: 'kg',
     pricePerUnit: '',
     quantity: '',
+    totalCost: '',
   });
+
+  // Dynamically merge materials from the preloaded list and actual purchases,
+  // without modifying the database, ensuring no existing data is affected.
+  const mergedMaterials = useMemo(() => {
+    const list = [...materials];
+    const seen = new Set(materials.map(m => m.name.toLowerCase().trim()));
+
+    // Get unique entries sorted by date so the latest entry determines unit and price
+    const entryMap = new Map<string, { unit: string; pricePerUnit: number }>();
+    entries.forEach(e => {
+      if (e.materialName) {
+        const nameKey = e.materialName.toLowerCase().trim();
+        if (!seen.has(nameKey)) {
+          entryMap.set(nameKey, { unit: e.unit, pricePerUnit: e.pricePerUnit });
+        }
+      }
+    });
+
+    entryMap.forEach((val, nameKey) => {
+      // Find the proper-cased name from entries
+      const originalEntry = entries.find(e => e.materialName && e.materialName.toLowerCase().trim() === nameKey);
+      list.push({
+        id: `purchased_${originalEntry?.id || nameKey}`,
+        name: originalEntry?.materialName || nameKey,
+        unit: val.unit,
+        pricePerUnit: val.pricePerUnit,
+        quantity: 0,
+      });
+    });
+
+    return list;
+  }, [materials, entries]);
+
+  const handleQtyChange = (qtyVal: string) => {
+    setForm(p => {
+      let newPrice = p.pricePerUnit;
+      let newTotal = p.totalCost;
+      const qtyNum = Number(qtyVal);
+
+      if (qtyNum > 0) {
+        if (p.totalCost && !p.pricePerUnit) {
+          newPrice = String(Number((Number(p.totalCost) / qtyNum).toFixed(4)));
+        } else if (p.pricePerUnit) {
+          newTotal = String(Number((qtyNum * Number(p.pricePerUnit)).toFixed(2)));
+        }
+      }
+      return {
+        ...p,
+        quantity: qtyVal,
+        pricePerUnit: newPrice,
+        totalCost: newTotal,
+      };
+    });
+  };
+
+  const handlePriceChange = (priceVal: string) => {
+    setForm(p => {
+      let newTotal = p.totalCost;
+      const priceNum = Number(priceVal);
+      const qtyNum = Number(p.quantity);
+
+      if (priceNum >= 0 && qtyNum > 0) {
+        newTotal = String(Number((qtyNum * priceNum).toFixed(2)));
+      }
+      return {
+        ...p,
+        pricePerUnit: priceVal,
+        totalCost: newTotal,
+      };
+    });
+  };
+
+  const handleTotalCostChange = (totalVal: string) => {
+    setForm(p => {
+      let newPrice = p.pricePerUnit;
+      const totalNum = Number(totalVal);
+      const qtyNum = Number(p.quantity);
+
+      if (totalNum >= 0 && qtyNum > 0) {
+        newPrice = String(Number((totalNum / qtyNum).toFixed(4)));
+      }
+      return {
+        ...p,
+        totalCost: totalVal,
+        pricePerUnit: newPrice,
+      };
+    });
+  };
 
   // All months that have either orders or investment entries
   const months = useMemo(() => {
@@ -140,12 +229,12 @@ export default function Investment({ orders }: InvestmentProps) {
     });
     // Switch to the month of the added entry
     setSelectedMonth(monthKey(form.date));
-    setForm({ date: todayStr(), materialName: '', unit: 'kg', pricePerUnit: '', quantity: '' });
+    setForm({ date: todayStr(), materialName: '', unit: 'kg', pricePerUnit: '', quantity: '', totalCost: '' });
     setShowAddForm(false);
   }
 
   // Quick-fill material name from catalog
-  const catalogNames = materials.map(m => m.name);
+  const catalogNames = mergedMaterials.map(m => m.name);
 
   return (
     <div className="pb-28 px-4 pt-4 space-y-4 bg-[#FAF8F5]">
@@ -231,12 +320,17 @@ export default function Investment({ orders }: InvestmentProps) {
                 onChange={e => {
                   const name = e.target.value;
                   setForm(p => {
-                    const match = materials.find(m => m.name.toLowerCase() === name.toLowerCase());
+                    const match = mergedMaterials.find(m => m.name.toLowerCase() === name.toLowerCase().trim());
+                    const price = match ? String(match.pricePerUnit) : p.pricePerUnit;
+                    const unit = match ? match.unit : p.unit;
+                    const qtyNum = Number(p.quantity);
+                    const totalCost = (price && qtyNum > 0) ? String(Number((qtyNum * Number(price)).toFixed(2))) : p.totalCost;
                     return {
                       ...p,
                       materialName: name,
-                      unit: match ? match.unit : p.unit,
-                      pricePerUnit: match ? String(match.pricePerUnit) : p.pricePerUnit,
+                      unit,
+                      pricePerUnit: price,
+                      totalCost,
                     };
                   });
                 }}
@@ -247,27 +341,17 @@ export default function Investment({ orders }: InvestmentProps) {
               </datalist>
             </div>
 
-            {/* Unit + Price/unit + Qty */}
-            <div className="grid grid-cols-3 gap-2">
+            {/* Unit + Qty + Price/unit + Total Cost */}
+            <div className="grid grid-cols-2 gap-2">
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Unit</p>
                 <select
                   value={form.unit}
                   onChange={e => setForm(p => ({ ...p, unit: e.target.value }))}
-                  className="w-full text-sm border border-[#E5DDD5] rounded-xl px-2 py-2 bg-white focus:outline-none focus:border-[#D8A65C] text-[#2C1B12] font-medium"
+                  className="w-full text-sm border border-[#E5DDD5] rounded-xl px-3 py-2 bg-white focus:outline-none focus:border-[#D8A65C] text-[#2C1B12] font-medium"
                 >
                   {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">₹ / unit</p>
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={form.pricePerUnit}
-                  onChange={e => setForm(p => ({ ...p, pricePerUnit: e.target.value }))}
-                  className="w-full text-sm border border-[#E5DDD5] rounded-xl px-3 py-2 bg-white focus:outline-none focus:border-[#D8A65C] text-[#2C1B12] font-medium"
-                />
               </div>
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Qty</p>
@@ -275,7 +359,27 @@ export default function Investment({ orders }: InvestmentProps) {
                   type="number"
                   placeholder="0"
                   value={form.quantity}
-                  onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))}
+                  onChange={e => handleQtyChange(e.target.value)}
+                  className="w-full text-sm border border-[#E5DDD5] rounded-xl px-3 py-2 bg-white focus:outline-none focus:border-[#D8A65C] text-[#2C1B12] font-medium"
+                />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">₹ / unit</p>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={form.pricePerUnit}
+                  onChange={e => handlePriceChange(e.target.value)}
+                  className="w-full text-sm border border-[#E5DDD5] rounded-xl px-3 py-2 bg-white focus:outline-none focus:border-[#D8A65C] text-[#2C1B12] font-medium"
+                />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Total Cost (₹)</p>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={form.totalCost}
+                  onChange={e => handleTotalCostChange(e.target.value)}
                   className="w-full text-sm border border-[#E5DDD5] rounded-xl px-3 py-2 bg-white focus:outline-none focus:border-[#D8A65C] text-[#2C1B12] font-medium"
                 />
               </div>
@@ -420,7 +524,7 @@ export default function Investment({ orders }: InvestmentProps) {
         </button>
         {showCatalog && (
           <div className="divide-y divide-[#FAF2E6] border-t border-[#FAF2E6]">
-            {materials.map(m => (
+            {mergedMaterials.map(m => (
               <div key={m.id} className="flex items-center justify-between px-4 py-2.5">
                 <p className="text-sm font-semibold text-[#2C1B12]">{m.name}</p>
                 <p className="text-xs text-gray-400 font-medium">
