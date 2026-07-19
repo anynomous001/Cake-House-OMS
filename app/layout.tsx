@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Playfair_Display, Outfit } from 'next/font/google';
+import { Playfair_Display, Outfit, Inter } from 'next/font/google';
 import './globals.css';
 
 const playfair = Playfair_Display({
@@ -14,14 +14,20 @@ const outfit = Outfit({
   display: 'swap',
 });
 
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: 'Tota Cake House — Order Management',
-  description: 'Internal order management system for Tota Cake House, Maslandapur',
+  title: 'Kamai — Stop Chasing Payments. Start Tracking Your Kamai.',
+  description: 'The all-in-one operating system and digital escrow for India’s independent creators, home bakers, and local merchants.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'TCH Orders',
+    title: 'Kamai',
   },
 };
 
@@ -30,13 +36,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#160E0A',
+  themeColor: '#1E3A8A',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${outfit.variable}`}>
-      <body className="font-sans antialiased text-[#2C1B12] bg-[#FAF8F5]">{children}</body>
+    <html lang="en" className={`${playfair.variable} ${outfit.variable} ${inter.variable}`}>
+      <body className="font-sans antialiased text-gray-900 bg-[#FBFBFA]">{children}</body>
     </html>
   );
 }
